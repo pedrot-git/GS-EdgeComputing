@@ -13,6 +13,11 @@ com o projeto publico.
 - `wokwi-atencao.png`: LED amarelo e LCD em estado de atencao.
 - `wokwi-critico.png`: LED vermelho, comando do buzzer e LCD em estado critico.
 
+A visao geral do circuito esta em
+[`docs/images/wokwi-projeto.png`](../images/wokwi-projeto.png), e o diagrama
+atualizado da arquitetura esta em
+[`docs/images/arquitetura-solarnav.png`](../images/arquitetura-solarnav.png).
+
 Capturas opcionais ainda nao registradas:
 
 - `serial-mqtt.png`: Serial Monitor exibindo as publicacoes MQTT.

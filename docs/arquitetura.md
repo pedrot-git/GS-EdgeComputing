@@ -1,17 +1,6 @@
 # Arquitetura - SolarNav Guard Dragon Telemetry
 
-```mermaid
-flowchart LR
-  P["Postman"] -->|"PATCH setTelemetry / setMode"| O["Orion Context Broker"]
-  O -->|"Registro de comando"| I["IoT Agent UltraLight MQTT"]
-  I -->|"/TEF/dragon001/cmd"| E["ESP32 no Wokwi"]
-  E -->|"/TEF/dragon001/cmdexe"| I
-  E -->|"/TEF/dragon001/attrs"| I
-  I -->|"Atualiza contexto"| O
-  O -->|"Subscription"| S["STH-Comet"]
-  O --> D["Dashboard - estado atual"]
-  S --> D
-```
+![Diagrama completo da arquitetura SolarNav Guard](images/arquitetura-solarnav.png)
 
 ## Responsabilidades
 

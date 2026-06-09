@@ -4,6 +4,16 @@ Projeto de Edge Computing da Global Solution 2026. O sistema simula uma
 capsula Dragon, calcula risco operacional no ESP32 e integra Wokwi, MQTT,
 FIWARE, STH-Comet, Postman e um dashboard web.
 
+## Integrantes
+
+| Nome | RM |
+| --- | --- |
+| Giovanna Oliveira Ferreira Dias | 566647 |
+| Marianne Mukai Nishikawa | 568001 |
+| Maria Laura Pereira Druzeic | 566634 |
+| Pedro Henrique Tavares Viana | 567680 |
+| David Ernesto Mogollon Gama | 567855 |
+
 ## Diferenciais
 
 - Telemetria local com DHT22, BMP180, MPU6050 e controle de bateria.
@@ -14,18 +24,7 @@ FIWARE, STH-Comet, Postman e um dashboard web.
 
 ## Arquitetura
 
-```mermaid
-flowchart LR
-  P["Postman"] -->|PATCH command| O["Orion"]
-  O --> I["IoT Agent MQTT"]
-  I -->|/TEF/dragon001/cmd| E["ESP32 / Wokwi"]
-  E -->|/TEF/dragon001/cmdexe| I
-  E -->|/TEF/dragon001/attrs| I
-  I --> O
-  O --> S["STH-Comet"]
-  O --> D["Dashboard"]
-  S --> D
-```
+![Arquitetura do SolarNav Guard](docs/images/arquitetura-solarnav.png)
 
 Mais detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
@@ -130,6 +129,8 @@ O registro da validacao executada esta em
 Projeto publico atual:
 
 https://wokwi.com/projects/466306185057884161
+
+![Projeto SolarNav Guard no Wokwi](docs/images/wokwi-projeto.png)
 
 Atualize o projeto publico com:
 
