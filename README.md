@@ -130,7 +130,7 @@ Projeto publico atual:
 
 https://wokwi.com/projects/466306185057884161
 
-![Projeto SolarNav Guard no Wokwi](docs/images/wokwi-projeto.png)
+![Projeto SolarNav Guard no Wokwi](docs/images/wokwi-projeto.png?v=20260609-2)
 
 Atualize o projeto publico com:
 
