@@ -12,7 +12,7 @@ Fluxo validado:
 O projeto Wokwi compilou, conectou ao Wi-Fi, publicou na VM e atualizou o
 dashboard. Projeto publico:
 
-https://wokwi.com/projects/466306185057884161
+https://wokwi.com/projects/466370349402539009
 
 ## Cenarios Wokwi
 

@@ -141,7 +141,7 @@ O registro da validacao executada esta em
 
 Projeto publico atual:
 
-https://wokwi.com/projects/466306185057884161
+https://wokwi.com/projects/466370349402539009
 
 ![Projeto SolarNav Guard no Wokwi](docs/images/wokwi-projeto.png?v=20260609-2)
 
@@ -184,7 +184,7 @@ Veja [docs/avaliacao-critica.md](docs/avaliacao-critica.md).
 ## Links da entrega
 
 - GitHub publico: https://github.com/pedrot-git/GS-EdgeComputing
-- Wokwi publico: https://wokwi.com/projects/466306185057884161
+- Wokwi publico: https://wokwi.com/projects/466370349402539009
 - Video no YouTube: https://youtu.be/y4Co_naWWIw
 
 ## Referencias
