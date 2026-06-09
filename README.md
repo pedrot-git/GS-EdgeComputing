@@ -185,6 +185,7 @@ Veja [docs/avaliacao-critica.md](docs/avaliacao-critica.md).
 
 - GitHub publico: https://github.com/pedrot-git/GS-EdgeComputing
 - Wokwi publico: https://wokwi.com/projects/466306185057884161
+- Video no YouTube: https://youtu.be/y4Co_naWWIw
 
 ## Referencias
 

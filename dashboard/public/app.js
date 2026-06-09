@@ -11,27 +11,45 @@ const limits = {
   criticalRisk: 70
 };
 
-const attrs = [
-  { key: "temperature", label: "Temperatura", unit: "C" },
-  { key: "pressure", label: "Pressao", unit: "kPa" },
-  { key: "battery", label: "Bateria", unit: "%" },
-  { key: "vibration", label: "Vibracao", unit: "g" },
-  { key: "solarRisk", label: "Risco solar", unit: "/100" },
-  { key: "gpsQuality", label: "Qualidade GPS", unit: "%" },
-  { key: "operationalRisk", label: "Risco operacional", unit: "/100" },
-  { key: "source", label: "Origem", unit: "" }
+const sensorAttrs = [
+  { key: "temperature", label: "Temperatura", unit: "°C", icon: "thermometer", tone: "blue" },
+  { key: "pressure", label: "Pressão", unit: "kPa", icon: "gauge", tone: "purple" },
+  { key: "vibration", label: "Vibração", unit: "g", icon: "pulse", tone: "purple" },
+  { key: "gpsQuality", label: "Qualidade GPS", unit: "%", icon: "pin", tone: "green" },
+  { key: "source", label: "Origem", unit: "", icon: "antenna", tone: "blue" }
 ];
 
-const cards = document.querySelector("#cards");
+const historyUnits = {
+  operationalRisk: "/100",
+  temperature: "°C",
+  pressure: "kPa",
+  battery: "%",
+  vibration: "g",
+  solarRisk: "/100",
+  gpsQuality: "%"
+};
+
+const sensorCards = document.querySelector("#sensorCards");
 const riskValue = document.querySelector("#riskValue");
 const stateValue = document.querySelector("#stateValue");
+const batteryValue = document.querySelector("#batteryValue");
+const solarRiskValue = document.querySelector("#solarRiskValue");
 const updatedAt = document.querySelector("#updatedAt");
 const lastCommand = document.querySelector("#lastCommand");
+const commandTime = document.querySelector("#commandTime");
 const connectionStatus = document.querySelector("#connectionStatus");
+const footerReading = document.querySelector("#footerReading");
+const footerRisk = document.querySelector("#footerRisk");
+const footerConnection = document.querySelector("#footerConnection");
 const alertsList = document.querySelector("#alertsList");
 const historyAttr = document.querySelector("#historyAttr");
+const historyTitle = document.querySelector("#historyTitle");
 const canvas = document.querySelector("#historyCanvas");
 const ctx = canvas.getContext("2d");
+const readingBar = document.querySelector(".reading-bar");
+
+let lastChart = { points: [], label: "Risco operacional", attr: "operationalRisk" };
+let resizeTimer;
 
 function attrValue(entity, key, fallback = "--") {
   return entity?.[key]?.value ?? fallback;
@@ -56,15 +74,37 @@ function formatValue(value) {
   return value;
 }
 
+function valueMarkup(value, unit) {
+  return `${escapeHtml(formatValue(value))}${unit ? ` <span class="unit">${escapeHtml(unit)}</span>` : ""}`;
+}
+
+function iconMarkup(name) {
+  return `<svg aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+}
+
 function setConnection(state, text) {
   connectionStatus.className = `status-pill ${state}`;
-  connectionStatus.textContent = text;
+  connectionStatus.innerHTML = `${iconMarkup(state === "stale" ? "calendar" : "wifi")}<span>${escapeHtml(text)}</span>`;
+  footerConnection.textContent = text;
+  footerConnection.className = state === "ok" ? "normal" : state === "stale" ? "attention" : "critical";
+  readingBar.className = `reading-bar ${state}`;
 }
 
 function riskClass(risk) {
   if (risk >= limits.criticalRisk) return "critical";
   if (risk >= limits.attentionRisk) return "attention";
   return "normal";
+}
+
+function metricClass(key, value) {
+  if (typeof value !== "number") return "";
+  if (key === "temperature" && (value < limits.temperature.low || value > limits.temperature.high)) return "attention";
+  if (key === "pressure" && Math.abs(value - limits.pressure.center) > limits.pressure.deviation) return "attention";
+  if (key === "battery" && value < limits.battery.low) return "critical";
+  if (key === "vibration" && value > limits.vibration.high) return "attention";
+  if (key === "solarRisk" && value > limits.solarRisk.high) return "critical";
+  if (key === "gpsQuality" && value < limits.gpsQuality.low) return "critical";
+  return "";
 }
 
 function readingTime(entity) {
@@ -80,16 +120,18 @@ function commandSummary(entity) {
     if (!status) return [];
     const info = attrValue(entity, `${command}_info`, "");
     const rawTime = entity?.[`${command}_status`]?.metadata?.TimeInstant?.value;
-    const timestamp = rawTime ? new Date(rawTime).getTime() : 0;
+    const date = rawTime ? new Date(rawTime) : null;
+    const timestamp = date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
     return [{
       text: `${command}: ${status}${info ? ` - ${info}` : ""}`,
       className: status === "OK" ? "normal" : status === "PENDING" ? "attention" : "critical",
-      timestamp: Number.isFinite(timestamp) ? timestamp : 0
+      date,
+      timestamp
     }];
   });
 
   candidates.sort((a, b) => b.timestamp - a.timestamp);
-  return candidates[0] || { text: "Nenhum", className: "" };
+  return candidates[0] || { text: "Nenhum comando registrado", className: "", date: null };
 }
 
 function buildAlerts(entity, stale) {
@@ -102,67 +144,105 @@ function buildAlerts(entity, stale) {
   const risk = numberValue(entity, "operationalRisk");
 
   const alerts = [];
-  if (stale) alerts.push(["Telemetria desatualizada ha mais de 15 segundos.", "alert-critical"]);
+  if (stale) alerts.push(["Telemetria desatualizada há mais de 15 segundos.", "alert-critical"]);
   if (temp !== null && (temp > limits.temperature.high || temp < limits.temperature.low)) {
     alerts.push(["Temperatura fora da faixa operacional.", "alert-warning"]);
   }
   if (pressure !== null && Math.abs(pressure - limits.pressure.center) > limits.pressure.deviation) {
-    alerts.push(["Pressao da capsula instavel.", "alert-warning"]);
+    alerts.push(["Pressão da cápsula instável.", "alert-warning"]);
   }
   if (battery !== null && battery < limits.battery.low) {
     alerts.push(["Bateria abaixo do limite preventivo.", "alert-critical"]);
   }
   if (vibration !== null && vibration > limits.vibration.high) {
-    alerts.push(["Vibracao elevada detectada.", "alert-warning"]);
+    alerts.push(["Vibração elevada detectada.", "alert-warning"]);
   }
   if (solar !== null && solar > limits.solarRisk.high) {
-    alerts.push(["Risco solar alto para navegacao e comunicacao.", "alert-critical"]);
+    alerts.push(["Risco solar alto para navegação e comunicação.", "alert-critical"]);
   }
   if (gps !== null && gps < limits.gpsQuality.low) {
     alerts.push(["Qualidade GPS ou sinal degradada.", "alert-critical"]);
   }
   if (risk !== null && risk >= limits.criticalRisk) {
-    alerts.push(["Estado critico: aplicar procedimento de contingencia.", "alert-critical"]);
+    alerts.push(["Estado crítico: aplicar procedimento de contingência.", "alert-critical"]);
   } else if (risk !== null && risk >= limits.attentionRisk) {
-    alerts.push(["Estado de atencao: acompanhar tendencia dos sensores.", "alert-warning"]);
+    alerts.push(["Estado de atenção: acompanhar tendência dos sensores.", "alert-warning"]);
   }
 
-  if (!alerts.length) alerts.push(["Nenhuma anomalia ativa.", "normal"]);
   return alerts;
 }
 
+function renderAlerts(alerts) {
+  if (!alerts.length) {
+    alertsList.innerHTML = `
+      <div class="alert-empty">
+        <div class="alert-heading normal">${iconMarkup("check")}<strong>Nenhum trigger ativo</strong></div>
+        <p>Telemetria funcionando dentro dos parâmetros esperados.</p>
+      </div>
+    `;
+    return;
+  }
+
+  alertsList.innerHTML = alerts.map(([text, className]) => `
+    <div class="alert-row ${className}">
+      ${iconMarkup("warning")}
+      <span>${escapeHtml(text)}</span>
+    </div>
+  `).join("");
+}
+
 function renderCurrent(entity) {
-  cards.innerHTML = attrs.map((attr) => {
-    const value = attrValue(entity, attr.key);
+  sensorCards.innerHTML = sensorAttrs.map((attr) => {
+    const rawValue = attr.key === "source" ? attrValue(entity, attr.key) : numberValue(entity, attr.key);
+    const value = rawValue ?? "--";
+    const valueClass = metricClass(attr.key, rawValue);
     return `
-      <article class="card">
-        <span class="label">${escapeHtml(attr.label)}</span>
-        <div class="value">${escapeHtml(formatValue(value))} <span class="unit">${escapeHtml(attr.unit)}</span></div>
+      <article class="metric-card secondary-card">
+        <div>
+          <span class="label">${escapeHtml(attr.label)}</span>
+          <strong class="metric-value ${valueClass}">${valueMarkup(value, attr.unit)}</strong>
+        </div>
+        <span class="metric-icon ${attr.tone}">${iconMarkup(attr.icon)}</span>
       </article>
     `;
   }).join("");
 
   const risk = numberValue(entity, "operationalRisk") ?? 0;
+  const battery = numberValue(entity, "battery");
+  const solarRisk = numberValue(entity, "solarRisk");
   const state = String(attrValue(entity, "status", "--"));
   const timestamp = readingTime(entity);
   const stale = !timestamp || Date.now() - timestamp.getTime() > STALE_AFTER_MS;
   const command = commandSummary(entity);
-
-  riskValue.textContent = `${risk}/100`;
-  riskValue.className = riskClass(risk);
-  stateValue.textContent = state;
-  stateValue.className = riskClass(risk);
-  updatedAt.textContent = timestamp
+  const formattedTimestamp = timestamp
     ? timestamp.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" })
     : "--";
+
+  riskValue.innerHTML = valueMarkup(risk, "/100");
+  riskValue.className = `metric-value ${riskClass(risk)}`;
+  stateValue.textContent = state;
+  stateValue.className = `metric-value state-value ${riskClass(risk)}`;
+  batteryValue.innerHTML = valueMarkup(battery ?? "--", "%");
+  batteryValue.className = `metric-value ${metricClass("battery", battery)}`;
+  solarRiskValue.innerHTML = valueMarkup(solarRisk ?? "--", "/100");
+  solarRiskValue.className = `metric-value ${metricClass("solarRisk", solarRisk)}`;
+
+  updatedAt.textContent = formattedTimestamp;
   updatedAt.className = stale ? "critical" : "";
+  updatedAt.dateTime = timestamp ? timestamp.toISOString() : "";
+  footerReading.textContent = formattedTimestamp;
+  footerReading.className = stale ? "critical" : "normal";
+  footerRisk.textContent = `${risk}/100`;
+  footerRisk.className = riskClass(risk);
+
   lastCommand.textContent = command.text;
   lastCommand.className = command.className;
+  commandTime.textContent = command.date
+    ? `Executado em ${command.date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" })}`
+    : "Nenhuma execução informada pelo FIWARE";
 
   setConnection(stale ? "stale" : "ok", stale ? "Dados antigos" : "Online");
-  alertsList.innerHTML = buildAlerts(entity, stale)
-    .map(([text, className]) => `<li class="${className}">${escapeHtml(text)}</li>`)
-    .join("");
+  renderAlerts(buildAlerts(entity, stale));
 }
 
 async function loadCurrent() {
@@ -186,66 +266,121 @@ async function loadHistory(attr) {
   return extractHistory(await response.json());
 }
 
-function drawChart(points, label, emptyMessage = "Aguardando historico no STH-Comet...") {
-  const width = canvas.width;
-  const height = canvas.height;
-  const pad = 42;
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#0f1316";
-  ctx.fillRect(0, 0, width, height);
+function chartColor(attr) {
+  if (attr === "battery" || attr === "solarRisk") return "#ffc928";
+  if (attr === "vibration" || attr === "pressure") return "#a75cff";
+  if (attr === "gpsQuality") return "#42e587";
+  return "#4d92ff";
+}
 
-  ctx.strokeStyle = "#334049";
+function drawChart(points, label, attr, emptyMessage = "Aguardando histórico no STH-Comet...") {
+  lastChart = { points, label, attr, emptyMessage };
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(Math.round(rect.width), 320);
+  const height = Math.max(Math.round(rect.height), 220);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+  }
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const compact = width < 560;
+  const pad = { top: 28, right: compact ? 14 : 20, bottom: 32, left: compact ? 35 : 42 };
+  const chartWidth = width - pad.left - pad.right;
+  const chartHeight = height - pad.top - pad.bottom;
+
+  ctx.strokeStyle = "rgba(136, 160, 191, 0.14)";
   ctx.lineWidth = 1;
   for (let i = 0; i < 5; i++) {
-    const y = pad + ((height - pad * 2) * i) / 4;
+    const y = pad.top + (chartHeight * i) / 4;
     ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(width - pad, y);
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(width - pad.right, y);
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#a8b4b0";
-  ctx.font = "14px Segoe UI, Arial";
-  ctx.fillText(label, pad, 24);
+  ctx.fillStyle = "#93a3ba";
+  ctx.font = `${compact ? 10 : 11}px Segoe UI, Arial`;
 
   if (points.length < 2) {
-    ctx.fillText(emptyMessage, pad, height / 2);
+    ctx.fillText(emptyMessage, pad.left, height / 2);
     return;
   }
 
   const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = max - min || 1;
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const rawSpread = maxValue - minValue;
+  const margin = rawSpread === 0 ? Math.max(Math.abs(maxValue) * 0.1, 1) : rawSpread * 0.14;
+  const min = Math.max(0, minValue - margin);
+  const boundedMaximum = ["operationalRisk", "solarRisk", "battery", "gpsQuality"].includes(attr);
+  const max = boundedMaximum ? Math.min(100, maxValue + margin) : maxValue + margin;
+  const spread = max - min;
+  const color = chartColor(attr);
 
-  ctx.strokeStyle = "#5aa7ff";
-  ctx.lineWidth = 3;
+  for (let i = 0; i < 5; i++) {
+    const value = max - (spread * i) / 4;
+    const y = pad.top + (chartHeight * i) / 4;
+    ctx.fillStyle = "#7f90a7";
+    ctx.textAlign = "right";
+    ctx.fillText(value.toFixed(value < 10 ? 1 : 0), pad.left - 9, y + 4);
+  }
+
+  const gradient = ctx.createLinearGradient(0, pad.top, 0, height - pad.bottom);
+  gradient.addColorStop(0, `${color}2e`);
+  gradient.addColorStop(1, `${color}00`);
   ctx.beginPath();
   points.forEach((point, index) => {
-    const x = pad + ((width - pad * 2) * index) / (points.length - 1);
-    const y = height - pad - ((point.value - min) / spread) * (height - pad * 2);
+    const x = pad.left + (chartWidth * index) / (points.length - 1);
+    const y = height - pad.bottom - ((point.value - min) / spread) * chartHeight;
     if (index === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
+  ctx.lineTo(width - pad.right, height - pad.bottom);
+  ctx.lineTo(pad.left, height - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const x = pad.left + (chartWidth * index) / (points.length - 1);
+    const y = height - pad.bottom - ((point.value - min) / spread) * chartHeight;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
   ctx.stroke();
 
-  ctx.fillStyle = "#f3f6f5";
+  ctx.fillStyle = color;
   points.forEach((point, index) => {
-    const x = pad + ((width - pad * 2) * index) / (points.length - 1);
-    const y = height - pad - ((point.value - min) / spread) * (height - pad * 2);
+    if (compact && index % Math.max(1, Math.floor(points.length / 12)) !== 0 && index !== points.length - 1) return;
+    const x = pad.left + (chartWidth * index) / (points.length - 1);
+    const y = height - pad.bottom - ((point.value - min) / spread) * chartHeight;
     ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.arc(x, y, 2.2, 0, Math.PI * 2);
     ctx.fill();
   });
 
   const firstTime = points[0].time.toLocaleTimeString("pt-BR");
   const lastTime = points.at(-1).time.toLocaleTimeString("pt-BR");
-  ctx.fillStyle = "#a8b4b0";
-  ctx.fillText(firstTime, pad, height - 14);
-  ctx.textAlign = "right";
-  ctx.fillText(lastTime, width - pad, height - 14);
-  ctx.fillText(`min ${min.toFixed(1)} / max ${max.toFixed(1)}`, width - pad, 24);
+  ctx.fillStyle = "#7f90a7";
   ctx.textAlign = "left";
+  ctx.fillText(firstTime, pad.left, height - 9);
+  ctx.textAlign = "right";
+  ctx.fillText(lastTime, width - pad.right, height - 9);
+  ctx.textAlign = "left";
+
+  canvas.setAttribute(
+    "aria-label",
+    `${label}: ${points.length} leituras, mínimo ${minValue.toFixed(1)} e máximo ${maxValue.toFixed(1)} ${historyUnits[attr] || ""}`
+  );
 }
 
 async function refresh() {
@@ -255,16 +390,24 @@ async function refresh() {
 
     const selected = historyAttr.value;
     const label = historyAttr.options[historyAttr.selectedIndex].textContent;
+    historyTitle.textContent = `Histórico de ${label.toLocaleLowerCase("pt-BR")}`;
     const history = await loadHistory(selected);
-    drawChart(history, label);
+    drawChart(history, label, selected);
   } catch (error) {
     setConnection("error", "Sem dados");
-    alertsList.innerHTML = `<li class="alert-critical">Nao foi possivel ler o FIWARE. Verifique Orion, STH e provisionamento.</li>`;
-    drawChart([], "Historico", "Falha ao consultar o historico.");
+    renderAlerts([["Não foi possível ler o FIWARE. Verifique Orion, STH e provisionamento.", "alert-critical"]]);
+    drawChart([], "Histórico", historyAttr.value, "Falha ao consultar o histórico.");
     console.error(error);
   }
 }
 
 historyAttr.addEventListener("change", refresh);
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    drawChart(lastChart.points, lastChart.label, lastChart.attr, lastChart.emptyMessage);
+  }, 120);
+});
+
 refresh();
 setInterval(refresh, 5000);
