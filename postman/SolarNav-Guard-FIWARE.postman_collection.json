@@ -9,7 +9,7 @@
     "type": "noauth"
   },
   "variable": [
-    { "key": "host", "value": "34.95.135.39" },
+    { "key": "host", "value": "00.00.000.00" },
     { "key": "orionUrl", "value": "http://{{host}}:1026" },
     { "key": "iotAgentUrl", "value": "http://{{host}}:4041" },
     { "key": "sthUrl", "value": "http://{{host}}:8666" },

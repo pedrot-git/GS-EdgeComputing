@@ -12,7 +12,7 @@
 ## Provisionamento
 
 `provision-dragon.ps1` foi executado duas vezes seguidas contra
-`34.95.135.39`.
+`00.00.000.00`.
 
 Resultado:
 

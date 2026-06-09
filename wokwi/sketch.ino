@@ -11,7 +11,7 @@
 // SolarNav Guard - Dragon Telemetry
 const char* SSID = "Wokwi-GUEST";
 const char* PASSWORD = "";
-const char* BROKER_MQTT = "34.95.135.39";
+const char* BROKER_MQTT = "00.00.000.00";
 const int BROKER_PORT = 1883;
 
 const char* TOPIC_TELEMETRY = "/TEF/dragon001/attrs";

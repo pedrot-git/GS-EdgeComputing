@@ -57,8 +57,8 @@ Suba o stack do
 [FIWARE Descomplicado](https://github.com/fabiocabrini/fiware) e execute:
 
 ```powershell
-.\fiware\healthcheck.ps1 -HostName 34.95.135.39
-.\fiware\provision-dragon.ps1 -HostName 34.95.135.39
+.\fiware\healthcheck.ps1 -HostName 00.00.000.00
+.\fiware\provision-dragon.ps1 -HostName 00.00.000.00
 ```
 
 O provisionamento remove configuracoes antigas deste dispositivo, recria
@@ -105,7 +105,7 @@ status nunca sao definidos pelo Postman; continuam calculados no edge.
 
 ```powershell
 cd dashboard
-$env:FIWARE_HOST="34.95.135.39"
+$env:FIWARE_HOST="00.00.000.00"
 npm start
 ```
 
@@ -138,7 +138,7 @@ Atualize o projeto publico com:
 - `wokwi/diagram.json`
 - `wokwi/libraries.txt`
 
-O broker configurado e `34.95.135.39:1883`. O Wokwi online nao acessa
+O broker configurado e `00.00.000.00:1883`. O Wokwi online nao acessa
 `localhost`, portanto o Mosquitto precisa estar publicamente acessivel.
 
 Controles locais:
