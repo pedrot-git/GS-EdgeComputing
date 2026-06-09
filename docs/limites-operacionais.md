@@ -1,6 +1,7 @@
 # Limites operacionais
 
-Esta e a fonte de verdade para firmware, dashboard, presets e demonstracao.
+Esta e a fonte de verdade para o processador da VM, dashboard, presets e
+demonstracao.
 
 ## Risco por parametro
 

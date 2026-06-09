@@ -1,5 +1,5 @@
 param(
-  [string]$Payload = "t|24.0|p|101.3|b|90|v|0.05|r|20|g|95|risk|4|state|NORMAL|source|LOCAL"
+  [string]$Payload = "t|24.0|p|101.3|b|90|v|0.05|r|20|g|95|source|LOCAL"
 )
 
 $ErrorActionPreference = "Stop"

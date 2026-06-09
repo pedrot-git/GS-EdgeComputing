@@ -10,7 +10,7 @@
 | Triggers de anomalia | LEDs, buzzer, LCD e lista de alertas |
 | Pelo menos 3 parametros | Temperatura, pressao, bateria, vibracao, solar e GPS |
 | Atuacao remota | Presets Postman enviados pelo fluxo oficial FIWARE |
-| Edge resiliente | Calculo e atuadores continuam funcionando sem MQTT |
+| Processamento de risco | Servico Python na VM calcula e devolve `setRisk` ao ESP32 |
 | Storytelling | Roteiro em `docs/storytelling-edge.md` |
 
 ## Evidencias recomendadas
@@ -21,4 +21,5 @@
 4. Orion com `setTelemetry_status=OK`.
 5. Dashboard exibindo origem REMOTE e historico.
 6. Retorno ao modo LOCAL.
-7. Provisionamento executado duas vezes com uma unica subscription.
+7. Provisionamento executado duas vezes mantendo duas subscriptions.
+8. `solarnav-risk.service` ativo e calculando na VM.

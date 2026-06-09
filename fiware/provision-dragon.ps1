@@ -66,7 +66,6 @@ function Remove-DragonSubscriptions {
   $subscriptionsUrl = "http://$HostName`:1026/v2/subscriptions?limit=1000"
   $allSubscriptions = Invoke-FiwareJson -Method Get -Url $subscriptionsUrl
   $matches = @($allSubscriptions | Where-Object {
-    $_.description -eq "SolarNav Guard Dragon telemetry history" -or
     @($_.subject.entities | Where-Object { $_.id -eq $EntityId }).Count -gt 0
   })
 
@@ -129,8 +128,6 @@ $attributes = @(
   @{ object_id = "v"; name = "vibration"; type = "Float" }
   @{ object_id = "r"; name = "solarRisk"; type = "Integer" }
   @{ object_id = "g"; name = "gpsQuality"; type = "Integer" }
-  @{ object_id = "risk"; name = "operationalRisk"; type = "Integer" }
-  @{ object_id = "state"; name = "status"; type = "Text" }
   @{ object_id = "source"; name = "source"; type = "Text" }
 )
 
@@ -147,6 +144,7 @@ $device = @{
       commands = @(
         @{ name = "setTelemetry"; type = "command" }
         @{ name = "setMode"; type = "command" }
+        @{ name = "setRisk"; type = "command" }
       )
     }
   )
@@ -180,53 +178,73 @@ Write-Step "Entidade Orion criada ou atualizada"
 
 Remove-DragonSubscriptions
 
-$historyAttributes = @(
+$sensorHistoryAttributes = @(
   "temperature",
   "pressure",
   "battery",
   "vibration",
   "solarRisk",
   "gpsQuality",
-  "operationalRisk",
-  "status",
   "source"
 )
 
-$subscription = @{
-  description = "SolarNav Guard Dragon telemetry history"
-  subject = @{
-    entities = @(
-      @{
-        id = $EntityId
-        type = $EntityType
-      }
-    )
-    condition = @{
-      attrs = $historyAttributes
-    }
-  }
-  notification = @{
-    http = @{
-      url = $SthNotifyUrlForOrion
-    }
-    attrs = $historyAttributes
-    attrsFormat = "legacy"
-  }
-  throttling = 1
-}
+$riskHistoryAttributes = @(
+  "operationalRisk",
+  "status"
+)
 
-Invoke-FiwareJson `
-  -Method Post `
-  -Url "http://$HostName`:1026/v2/subscriptions" `
-  -Body $subscription | Out-Null
-Write-Step "Subscription unica Orion -> STH-Comet criada"
+$subscriptions = @(
+  @{
+    description = "SolarNav Guard Dragon sensor history"
+    attributes = $sensorHistoryAttributes
+  },
+  @{
+    description = "SolarNav Guard Dragon risk history"
+    attributes = $riskHistoryAttributes
+  }
+)
+
+foreach ($definition in $subscriptions) {
+  $subscription = @{
+    description = $definition.description
+    subject = @{
+      entities = @(
+        @{
+          id = $EntityId
+          type = $EntityType
+        }
+      )
+      condition = @{
+        attrs = $definition.attributes
+      }
+    }
+    notification = @{
+      http = @{
+        url = $SthNotifyUrlForOrion
+      }
+      attrs = $definition.attributes
+      attrsFormat = "legacy"
+    }
+    throttling = 1
+  }
+
+  Invoke-FiwareJson `
+    -Method Post `
+    -Url "http://$HostName`:1026/v2/subscriptions" `
+    -Body $subscription | Out-Null
+  Write-Step "Subscription criada: $($definition.description)"
+}
 
 $provisioned = Invoke-FiwareJson `
   -Method Get `
   -Url "http://$HostName`:4041/iot/devices/$DeviceId"
 
 $commandNames = @($provisioned.commands | ForEach-Object { $_.name })
-if ($commandNames -notcontains "setTelemetry" -or $commandNames -notcontains "setMode") {
+if (
+  $commandNames -notcontains "setTelemetry" -or
+  $commandNames -notcontains "setMode" -or
+  $commandNames -notcontains "setRisk"
+) {
   throw "O dispositivo foi criado sem os comandos esperados."
 }
 
@@ -234,12 +252,15 @@ $allSubscriptions = Invoke-FiwareJson `
   -Method Get `
   -Url "http://$HostName`:1026/v2/subscriptions?limit=1000"
 $subscriptions = @($allSubscriptions | Where-Object {
-  $_.description -eq "SolarNav Guard Dragon telemetry history" -and
+  $_.description -in @(
+    "SolarNav Guard Dragon sensor history",
+    "SolarNav Guard Dragon risk history"
+  ) -and
   @($_.subject.entities | Where-Object { $_.id -eq $EntityId }).Count -gt 0
 })
 
-if ($subscriptions.Count -ne 1) {
-  throw "Esperada uma subscription Dragon, encontradas $($subscriptions.Count)."
+if ($subscriptions.Count -ne 2) {
+  throw "Esperadas duas subscriptions Dragon, encontradas $($subscriptions.Count)."
 }
 
 Write-Host ""

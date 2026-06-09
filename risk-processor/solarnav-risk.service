@@ -1,0 +1,21 @@
+[Unit]
+Description=SolarNav Guard risk processor
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/solarnav-risk
+ExecStart=/usr/bin/python3 /opt/solarnav-risk/risk_processor.py
+Environment=ORION_URL=http://localhost:1026
+Environment=FIWARE_SERVICE=smart
+Environment=FIWARE_SERVICE_PATH=/
+Environment=ENTITY_ID=urn:ngsi-ld:Dragon:001
+Environment=ENTITY_TYPE=DragonTelemetry
+Environment=POLL_INTERVAL_SECONDS=1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

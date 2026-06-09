@@ -6,11 +6,12 @@
 vibracao, bateria, clima espacial e qualidade de navegacao podem mudar em
 poucos segundos e exigem resposta local."
 
-## Cena 2 - Sensores e edge
+## Cena 2 - Sensores e processamento
 
 "No Wokwi, o ESP32 usa DHT22, BMP180, MPU6050 e um controle de bateria. Ele
-calcula o risco de zero a cem no proprio dispositivo. Mesmo sem internet, os
-LEDs, o buzzer e o LCD continuam indicando a condicao da capsula."
+envia apenas as leituras. Um servico Python na VM calcula o risco de zero a
+cem, registra o resultado no FIWARE e devolve o estado ao ESP32 para LEDs,
+buzzer e LCD."
 
 ## Cena 3 - Operacao remota
 
@@ -28,12 +29,14 @@ Demonstrar:
 
 ## Cena 4 - Plataforma FIWARE
 
-"A telemetria volta ao Orion pelo mesmo IoT Agent. O STH-Comet guarda o
-historico e o dashboard apresenta estado atual, origem dos dados, horario real,
-alertas e tendencia."
+"A telemetria volta ao Orion pelo mesmo IoT Agent. O processador identifica a
+nova leitura, calcula risco e estado, e o STH-Comet guarda separadamente o
+historico dos sensores e do resultado. O dashboard apresenta estado atual,
+origem dos dados, horario real, alertas e tendencia."
 
 ## Cena 5 - Valor e limites
 
-"O principal valor e separar decisao local de supervisao remota. A demonstracao
-usa uma VM publica e componentes FIWARE legados por compatibilidade academica.
-Em producao, seriam necessarios TLS, autenticacao e uma stack NGSI-LD."
+"O principal valor e separar aquisicao, decisao e atuacao. A demonstracao usa
+uma VM publica e componentes FIWARE legados por compatibilidade academica. Em
+producao, seriam necessarios TLS, autenticacao, alta disponibilidade para o
+processador e uma stack NGSI-LD."

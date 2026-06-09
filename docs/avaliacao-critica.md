@@ -2,12 +2,14 @@
 
 ## O que esta bom
 
-- **Edge real:** risco e alertas sao calculados no ESP32, nao apenas no painel.
+- **Regra centralizada:** risco e estado sao calculados por um servico testavel
+  na VM, e nao pelo navegador do dashboard.
 - **Fluxo completo:** MQTT, IoT Agent, Orion, STH e dashboard tem papeis claros.
 - **Bidirecionalidade:** Postman controla a simulacao pelo caminho FIWARE e
   recebe confirmacao de execucao.
 - **Demonstracao reproduzivel:** presets reduzem o tempo para apresentar casos.
-- **Resiliencia:** a perda de rede nao interrompe leitura e alerta local.
+- **Atuacao distribuida:** a VM decide e o ESP32 aplica o resultado em
+  componentes fisicos simulados.
 - **Observabilidade:** origem, horario, historico e resultado de comando tornam
   o comportamento explicavel.
 
@@ -28,6 +30,8 @@ fisica convincente para o contexto do projeto.
 - IP e identificadores sao fixos para facilitar a entrega.
 - UltraLight e STH-Comet sao tecnologias legadas/arquivadas.
 - O dashboard usa polling, nao notificacao em tempo real.
+- O calculo de risco depende da VM e da conectividade MQTT para chegar aos
+  atuadores.
 - O modelo de risco e heuristico e nao foi validado com dados aeroespaciais.
 - O projeto representa uma unica capsula.
 - O MPU6050 simulado nao reproduz vibracao estrutural de alta frequencia.
@@ -57,7 +61,7 @@ fisica convincente para o contexto do projeto.
 
 ## Conclusao
 
-O projeto e forte como demonstracao academica de Edge + FIWARE. A arquitetura
-agora mostra telemetria e atuacao remota, e o hardware ficou mais defensavel.
-Na apresentacao, deixe claro que os limites sao didaticos e que a VM nao
-representa seguranca de producao.
+O projeto e forte como demonstracao academica de IoT + FIWARE. A arquitetura
+agora separa aquisicao, processamento, persistencia e atuacao. Na apresentacao,
+deixe claro que os limites sao didaticos e que a VM nao representa seguranca
+de producao.

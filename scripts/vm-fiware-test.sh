@@ -132,13 +132,12 @@ curl_status POST "http://localhost:4041/iot/devices" '{
         { "object_id": "v", "name": "vibration", "type": "Float" },
         { "object_id": "r", "name": "solarRisk", "type": "Integer" },
         { "object_id": "g", "name": "gpsQuality", "type": "Integer" },
-        { "object_id": "risk", "name": "operationalRisk", "type": "Integer" },
-        { "object_id": "state", "name": "status", "type": "Text" },
         { "object_id": "source", "name": "source", "type": "Text" }
       ],
       "commands": [
         { "name": "setTelemetry", "type": "command" },
-        { "name": "setMode", "type": "command" }
+        { "name": "setMode", "type": "command" },
+        { "name": "setRisk", "type": "command" }
       ]
     }
   ]
@@ -159,9 +158,9 @@ curl_status POST "http://localhost:1026/v2/entities" '{
   "source": { "type": "Text", "value": "LOCAL" }
 }'
 
-header "Create Orion to STH-Comet subscription"
+header "Create Orion sensor subscription"
 curl_status POST "http://localhost:1026/v2/subscriptions" '{
-  "description": "SolarNav Guard Dragon telemetry history",
+  "description": "SolarNav Guard Dragon sensor history",
   "subject": {
     "entities": [
       {
@@ -170,14 +169,38 @@ curl_status POST "http://localhost:1026/v2/subscriptions" '{
       }
     ],
     "condition": {
-      "attrs": ["temperature", "pressure", "battery", "vibration", "solarRisk", "gpsQuality", "operationalRisk", "status", "source"]
+      "attrs": ["temperature", "pressure", "battery", "vibration", "solarRisk", "gpsQuality", "source"]
     }
   },
   "notification": {
     "http": {
       "url": "http://sth-comet:8666/notify"
     },
-    "attrs": ["temperature", "pressure", "battery", "vibration", "solarRisk", "gpsQuality", "operationalRisk", "status", "source"],
+    "attrs": ["temperature", "pressure", "battery", "vibration", "solarRisk", "gpsQuality", "source"],
+    "attrsFormat": "legacy"
+  },
+  "throttling": 1
+}'
+
+header "Create Orion risk subscription"
+curl_status POST "http://localhost:1026/v2/subscriptions" '{
+  "description": "SolarNav Guard Dragon risk history",
+  "subject": {
+    "entities": [
+      {
+        "id": "urn:ngsi-ld:Dragon:001",
+        "type": "DragonTelemetry"
+      }
+    ],
+    "condition": {
+      "attrs": ["operationalRisk", "status"]
+    }
+  },
+  "notification": {
+    "http": {
+      "url": "http://sth-comet:8666/notify"
+    },
+    "attrs": ["operationalRisk", "status"],
     "attrsFormat": "legacy"
   },
   "throttling": 1
@@ -187,14 +210,14 @@ header "Publish MQTT samples"
 sudo docker exec "$MOSQUITTO_CONTAINER" mosquitto_pub \
   -h localhost -p 1883 \
   -t "/$API_KEY/$DEVICE_ID/attrs" \
-  -m "t|24.0|p|101.3|b|90|v|0.05|r|20|g|95|risk|4|state|NORMAL|source|LOCAL"
+  -m "t|24.0|p|101.3|b|90|v|0.05|r|20|g|95|source|LOCAL"
 
 sleep 2
 
 sudo docker exec "$MOSQUITTO_CONTAINER" mosquitto_pub \
   -h localhost -p 1883 \
   -t "/$API_KEY/$DEVICE_ID/attrs" \
-  -m "t|38|p|110|b|5|v|1.5|r|100|g|10|risk|86|state|CRITICO|source|REMOTE"
+  -m "t|38|p|110|b|5|v|1.5|r|100|g|10|source|REMOTE"
 
 sleep 2
 

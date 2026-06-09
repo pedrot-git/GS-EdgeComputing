@@ -1,8 +1,9 @@
 # SolarNav Guard - Dragon Telemetry Edge
 
 Projeto de Edge Computing da Global Solution 2026. O sistema simula uma
-capsula Dragon, calcula risco operacional no ESP32 e integra Wokwi, MQTT,
-FIWARE, STH-Comet, Postman e um dashboard web.
+capsula Dragon, envia sensores pelo ESP32 e calcula risco operacional em um
+servico Python na VM, integrando Wokwi, MQTT, FIWARE, STH-Comet, Postman e
+dashboard web.
 
 ## Integrantes
 
@@ -17,14 +18,13 @@ FIWARE, STH-Comet, Postman e um dashboard web.
 ## Diferenciais
 
 - Telemetria local com DHT22, BMP180, MPU6050 e controle de bateria.
-- Calculo de risco e alertas continuam ativos mesmo sem rede.
+- Calculo de risco centralizado, testavel e executado continuamente na VM.
+- Resultado devolvido ao ESP32 para controlar LEDs, buzzer e LCD.
 - Controle bidirecional pelo Postman usando comandos FIWARE.
 - Modos `LOCAL` e `REMOTE`, com confirmacao de comando no Orion.
 - Estado atual no Orion, historico no STH-Comet e dashboard responsivo.
 
 ## Arquitetura
-
-![Arquitetura do SolarNav Guard](docs/images/arquitetura-solarnav.png)
 
 Mais detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
@@ -38,15 +38,16 @@ Mais detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 | `v` | `vibration` | Vibracao em g |
 | `r` | `solarRisk` | Risco solar de 0 a 100 |
 | `g` | `gpsQuality` | Qualidade GPS de 0 a 100 |
-| `risk` | `operationalRisk` | Risco calculado de 0 a 100 |
-| `state` | `status` | `NORMAL`, `ATENCAO` ou `CRITICO` |
 | `source` | `source` | `LOCAL` ou `REMOTE` |
 
 Payload UltraLight:
 
 ```text
-t|24.0|p|101.3|b|90|v|0.05|r|20|g|95|risk|4|state|NORMAL|source|LOCAL
+t|24.0|p|101.3|b|90|v|0.05|r|20|g|95|source|LOCAL
 ```
+
+O processador da VM grava `operationalRisk` e `status` diretamente no Orion e
+envia `setRisk` ao ESP32 para atualizar os atuadores.
 
 Os limites e pesos oficiais estao em
 [docs/limites-operacionais.md](docs/limites-operacionais.md).
@@ -57,13 +58,22 @@ Suba o stack do
 [FIWARE Descomplicado](https://github.com/fabiocabrini/fiware) e execute:
 
 ```powershell
-.\fiware\healthcheck.ps1 -HostName 00.00.000.00
-.\fiware\provision-dragon.ps1 -HostName 00.00.000.00
+.\fiware\healthcheck.ps1 -HostName 34.95.247.248
+.\fiware\provision-dragon.ps1 -HostName 34.95.247.248
+.\scripts\deploy-risk-processor.ps1 -HostName 34.95.247.248
 ```
 
 O provisionamento remove configuracoes antigas deste dispositivo, recria
-service group, dispositivo, comandos, entidade e deixa uma unica subscription
-historica. Falhas encerram o script com erro.
+service group, dispositivo, comandos, entidade e cria duas subscriptions:
+sensores e risco calculado. O ultimo comando instala e inicia
+`solarnav-risk.service` na VM.
+
+Para conferir o servico no SSH da VM:
+
+```bash
+sudo systemctl status solarnav-risk.service
+sudo journalctl -u solarnav-risk.service -f
+```
 
 Topicos:
 
@@ -96,8 +106,8 @@ temperature, pressure, battery, vibration, solarRisk, gpsQuality
 ```
 
 Ao receber o primeiro comando, o ESP32 copia a leitura local e altera apenas
-os campos enviados. Um campo invalido rejeita o comando inteiro. O risco e o
-status nunca sao definidos pelo Postman; continuam calculados no edge.
+os campos enviados. Um campo invalido rejeita o comando inteiro. O Postman nao
+define risco nem status; o processador da VM calcula ambos.
 
 `Voltar ao modo LOCAL` devolve o controle aos sensores.
 
@@ -105,7 +115,7 @@ status nunca sao definidos pelo Postman; continuam calculados no edge.
 
 ```powershell
 cd dashboard
-$env:FIWARE_HOST="00.00.000.00"
+$env:FIWARE_HOST="34.95.247.248"
 npm start
 ```
 
@@ -119,6 +129,9 @@ Testes:
 ```powershell
 cd dashboard
 npm test
+
+cd ..\risk-processor
+python -m unittest -v
 ```
 
 O registro da validacao executada esta em
@@ -138,22 +151,29 @@ Atualize o projeto publico com:
 - `wokwi/diagram.json`
 - `wokwi/libraries.txt`
 
-O broker configurado e `00.00.000.00:1883`. O Wokwi online nao acessa
+O broker configurado e `34.95.247.248:1883`. O Wokwi online nao acessa
 `localhost`, portanto o Mosquitto precisa estar publicamente acessivel.
 
 Controles locais:
 
 - DHT22: temperatura.
-- BMP180: pressao.
-- MPU6050: vibracao derivada da aceleracao.
+- BMP180: pressao, usando I2C em `GPIO 21/22`.
+- LCD I2C: compartilha o barramento `GPIO 21/22` com o BMP180.
+- MPU6050: barramento I2C exclusivo em `GPIO 25/26`.
 - Slider: bateria.
 - Risco solar local: `20`.
 - Qualidade GPS local: `95`.
+
+O ESP32 nao calcula risco. Ele publica os sensores, recebe `setRisk` da VM e
+usa o resultado somente para LEDs, buzzer e LCD.
 
 ## Seguranca e evolucao
 
 A VM usa MQTT e APIs FIWARE publicas sem TLS ou autenticacao. Isso e aceitavel
 somente para demonstracao academica. Nao envie dados sensiveis.
+
+Se a VM ou a rede ficar indisponivel, o ESP32 continua lendo sensores, mas
+mantem o ultimo risco recebido ate o processamento remoto voltar.
 
 O IoT Agent UltraLight esta arquivado e o STH-Comet e uma tecnologia legada.
 Eles foram mantidos por compatibilidade com a stack exigida. Uma evolucao de

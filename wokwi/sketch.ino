@@ -11,7 +11,7 @@
 // SolarNav Guard - Dragon Telemetry
 const char* SSID = "Wokwi-GUEST";
 const char* PASSWORD = "";
-const char* BROKER_MQTT = "00.00.000.00";
+const char* BROKER_MQTT = "34.95.247.248";
 const int BROKER_PORT = 1883;
 
 const char* TOPIC_TELEMETRY = "/TEF/dragon001/attrs";
@@ -47,12 +47,15 @@ DHTesp dht;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 Adafruit_BMP085 bmp;
 Adafruit_MPU6050 mpu;
+TwoWire sensorWire = TwoWire(1);
 
 Telemetry localTelemetry = {24.0, 101.3, 90, 0.0, 20, 95};
 Telemetry remoteTelemetry = localTelemetry;
 bool remoteMode = false;
 bool bmpReady = false;
 bool mpuReady = false;
+int currentRisk = 0;
+String currentState = "AGUARDANDO";
 
 unsigned long lastSensorRead = 0;
 unsigned long lastPublish = 0;
@@ -61,50 +64,6 @@ unsigned long lastMqttAttempt = 0;
 
 float mapFloat(int value, float outMin, float outMax) {
   return outMin + (outMax - outMin) * (float)value / 4095.0;
-}
-
-int scoreHigh(float value, float warn, float critical) {
-  if (value <= warn) return 0;
-  if (value >= critical) return 100;
-  return (int)(((value - warn) / (critical - warn)) * 100.0);
-}
-
-int scoreLow(float value, float warn, float critical) {
-  if (value >= warn) return 0;
-  if (value <= critical) return 100;
-  return (int)(((warn - value) / (warn - critical)) * 100.0);
-}
-
-int scorePressure(float pressure) {
-  float deviation = fabs(pressure - 101.3);
-  return scoreHigh(deviation, 4.0, 10.0);
-}
-
-int calculateRisk(const Telemetry& data) {
-  int tempRisk = max(
-    scoreHigh(data.temperature, 29.0, 36.0),
-    scoreLow(data.temperature, 18.0, 12.0)
-  );
-  int pressureRisk = scorePressure(data.pressure);
-  int batteryRisk = scoreLow(data.battery, 45.0, 15.0);
-  int vibrationRisk = scoreHigh(data.vibration, 1.1, 2.3);
-  int gpsRisk = scoreLow(data.gpsQuality, 65.0, 30.0);
-
-  float weighted =
-    tempRisk * 0.15 +
-    pressureRisk * 0.20 +
-    batteryRisk * 0.15 +
-    vibrationRisk * 0.15 +
-    data.solarRisk * 0.20 +
-    gpsRisk * 0.15;
-
-  return constrain((int)round(weighted), 0, 100);
-}
-
-String stateFromRisk(int risk) {
-  if (risk >= 70) return "CRITICO";
-  if (risk >= 40) return "ATENCAO";
-  return "NORMAL";
 }
 
 void printLcdLine(int row, String text) {
@@ -244,6 +203,66 @@ void handleSetMode(String value) {
   lastPublish = 0;
 }
 
+void handleSetRisk(const String& value) {
+  int parsedRisk = -1;
+  String parsedState = "";
+  bool hasRisk = false;
+  bool hasState = false;
+  int start = 0;
+
+  while (start <= value.length()) {
+    int separator = value.indexOf('|', start);
+    String pair = separator < 0 ? value.substring(start) : value.substring(start, separator);
+    int equals = pair.indexOf('=');
+
+    if (equals <= 0) {
+      sendCommandResult("setRisk", "ERROR:formato_invalido");
+      return;
+    }
+
+    String key = pair.substring(0, equals);
+    String rawValue = pair.substring(equals + 1);
+    if (key == "risk") {
+      float number;
+      if (!parseStrictFloat(rawValue, number) ||
+          number < 0.0 || number > 100.0 || floor(number) != number) {
+        sendCommandResult("setRisk", "ERROR:risk_invalido");
+        return;
+      }
+      parsedRisk = (int)number;
+      hasRisk = true;
+    } else if (key == "status") {
+      rawValue.trim();
+      rawValue.toUpperCase();
+      if (rawValue != "NORMAL" && rawValue != "ATENCAO" && rawValue != "CRITICO") {
+        sendCommandResult("setRisk", "ERROR:status_invalido");
+        return;
+      }
+      parsedState = rawValue;
+      hasState = true;
+    } else {
+      sendCommandResult("setRisk", "ERROR:campo_invalido:" + key);
+      return;
+    }
+
+    if (separator < 0) break;
+    start = separator + 1;
+  }
+
+  if (!hasRisk || !hasState) {
+    sendCommandResult("setRisk", "ERROR:campos_ausentes");
+    return;
+  }
+
+  currentRisk = parsedRisk;
+  currentState = parsedState;
+  updateActuators(currentRisk, currentState);
+  sendCommandResult(
+    "setRisk",
+    "OK:risk=" + String(currentRisk) + ":status=" + currentState
+  );
+}
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String message;
   message.reserve(length);
@@ -273,6 +292,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     handleSetTelemetry(value);
   } else if (command == "setMode") {
     handleSetMode(value);
+  } else if (command == "setRisk") {
+    handleSetRisk(value);
   } else {
     sendCommandResult(command, "ERROR:comando_desconhecido");
   }
@@ -307,7 +328,7 @@ void maintainMqtt() {
   }
 }
 
-void publishTelemetry(const Telemetry& data, int risk, const String& state) {
+void publishTelemetry(const Telemetry& data) {
   String payload =
     "t|" + String(data.temperature, 1) +
     "|p|" + String(data.pressure, 1) +
@@ -315,8 +336,6 @@ void publishTelemetry(const Telemetry& data, int risk, const String& state) {
     "|v|" + String(data.vibration, 2) +
     "|r|" + String(data.solarRisk) +
     "|g|" + String(data.gpsQuality) +
-    "|risk|" + String(risk) +
-    "|state|" + state +
     "|source|" + String(remoteMode ? "REMOTE" : "LOCAL");
 
   bool published = mqtt.connected() && mqtt.publish(TOPIC_TELEMETRY, payload.c_str());
@@ -332,10 +351,12 @@ void setup() {
   pinMode(BUZZER, OUTPUT);
   pinMode(PIN_BATTERY, INPUT);
 
+  // LCD e BMP180 usam o barramento principal; MPU6050 usa o segundo.
   Wire.begin(21, 22);
+  sensorWire.begin(25, 26);
   dht.setup(PIN_DHT, DHTesp::DHT22);
-  bmpReady = bmp.begin();
-  mpuReady = mpu.begin();
+  bmpReady = bmp.begin(BMP085_ULTRAHIGHRES, &Wire);
+  mpuReady = mpu.begin(MPU6050_I2CADDR_DEFAULT, &sensorWire);
   if (mpuReady) {
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
@@ -344,7 +365,7 @@ void setup() {
   lcd.init();
   lcd.backlight();
   printLcdLine(0, "SolarNav Guard");
-  printLcdLine(1, "Edge iniciando");
+  printLcdLine(1, "Aguardando risco");
 
   WiFi.mode(WIFI_STA);
   mqtt.setServer(BROKER_MQTT, BROKER_PORT);
@@ -367,12 +388,9 @@ void loop() {
   }
 
   const Telemetry& active = remoteMode ? remoteTelemetry : localTelemetry;
-  int risk = calculateRisk(active);
-  String state = stateFromRisk(risk);
-  updateActuators(risk, state);
 
   if (now - lastPublish >= PUBLISH_INTERVAL_MS) {
     lastPublish = now;
-    publishTelemetry(active, risk, state);
+    publishTelemetry(active);
   }
 }
