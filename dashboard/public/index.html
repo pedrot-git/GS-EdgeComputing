@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SolarNav Guard - Dragon Telemetry</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SolarNav Guard</p>
+          <h1>Dragon Telemetry</h1>
+        </div>
+        <div class="status-pill" id="connectionStatus">Conectando</div>
+      </header>
+
+      <section class="risk-band" id="riskBand">
+        <div>
+          <span class="label">Risco operacional</span>
+          <strong id="riskValue">--</strong>
+        </div>
+        <div>
+          <span class="label">Estado</span>
+          <strong id="stateValue">--</strong>
+        </div>
+        <div>
+          <span class="label">Leitura FIWARE</span>
+          <strong id="updatedAt">--</strong>
+        </div>
+        <div>
+          <span class="label">Ultimo comando</span>
+          <strong id="lastCommand">--</strong>
+        </div>
+      </section>
+
+      <section class="cards" id="cards"></section>
+
+      <section class="workspace">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Historico</h2>
+            <select id="historyAttr">
+              <option value="operationalRisk">Risco operacional</option>
+              <option value="temperature">Temperatura</option>
+              <option value="pressure">Pressao</option>
+              <option value="battery">Bateria</option>
+              <option value="vibration">Vibracao</option>
+              <option value="solarRisk">Risco solar</option>
+              <option value="gpsQuality">Qualidade GPS</option>
+            </select>
+          </div>
+          <canvas id="historyCanvas" width="900" height="320"></canvas>
+        </div>
+
+        <div class="panel alerts">
+          <div class="panel-header">
+            <h2>Triggers</h2>
+          </div>
+          <ul id="alertsList"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

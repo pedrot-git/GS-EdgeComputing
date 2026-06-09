@@ -1,0 +1,6 @@
+PubSubClient
+DHT sensor library for ESPx
+LiquidCrystal I2C
+Adafruit BMP085 Library
+Adafruit MPU6050
+Adafruit Unified Sensor

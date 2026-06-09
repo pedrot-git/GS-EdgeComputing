@@ -1,0 +1,329 @@
+{
+  "info": {
+    "_postman_id": "9e36b207-e8c7-4c62-a317-d84773befa01",
+    "name": "SolarNav Guard - FIWARE Bidirecional",
+    "description": "Provisiona, consulta e controla a telemetria Dragon. O fluxo de comando e Postman -> Orion -> IoT Agent -> MQTT -> ESP32/Wokwi.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    { "key": "host", "value": "34.95.135.39" },
+    { "key": "orionUrl", "value": "http://{{host}}:1026" },
+    { "key": "iotAgentUrl", "value": "http://{{host}}:4041" },
+    { "key": "sthUrl", "value": "http://{{host}}:8666" },
+    { "key": "fiwareService", "value": "smart" },
+    { "key": "fiwareServicePath", "value": "/" },
+    { "key": "apiKey", "value": "TEF" },
+    { "key": "deviceId", "value": "dragon001" },
+    { "key": "entityId", "value": "urn:ngsi-ld:Dragon:001" },
+    { "key": "entityType", "value": "DragonTelemetry" },
+    { "key": "historyAttribute", "value": "operationalRisk" },
+    { "key": "lastN", "value": "40" }
+  ],
+  "item": [
+    {
+      "name": "1 - Healthcheck",
+      "item": [
+        {
+          "name": "Orion - Version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orionUrl}}/version"
+          }
+        },
+        {
+          "name": "IoT Agent - About",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{iotAgentUrl}}/iot/about"
+          }
+        },
+        {
+          "name": "STH-Comet - Version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{sthUrl}}/version"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 - Provisionamento",
+      "description": "Para reconciliacao idempotente, prefira fiware/provision-dragon.ps1. Estas requisicoes permitem inspecao e provisionamento manual.",
+      "item": [
+        {
+          "name": "Criar service group MQTT",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"services\": [\n    {\n      \"apikey\": \"{{apiKey}}\",\n      \"cbroker\": \"http://orion:1026\",\n      \"entity_type\": \"Thing\",\n      \"resource\": \"\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{iotAgentUrl}}/iot/services"
+          }
+        },
+        {
+          "name": "Criar dispositivo Dragon com comandos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"devices\": [\n    {\n      \"device_id\": \"{{deviceId}}\",\n      \"entity_name\": \"{{entityId}}\",\n      \"entity_type\": \"{{entityType}}\",\n      \"apikey\": \"{{apiKey}}\",\n      \"protocol\": \"PDI-IoTA-UltraLight\",\n      \"transport\": \"MQTT\",\n      \"attributes\": [\n        { \"object_id\": \"t\", \"name\": \"temperature\", \"type\": \"Float\" },\n        { \"object_id\": \"p\", \"name\": \"pressure\", \"type\": \"Float\" },\n        { \"object_id\": \"b\", \"name\": \"battery\", \"type\": \"Integer\" },\n        { \"object_id\": \"v\", \"name\": \"vibration\", \"type\": \"Float\" },\n        { \"object_id\": \"r\", \"name\": \"solarRisk\", \"type\": \"Integer\" },\n        { \"object_id\": \"g\", \"name\": \"gpsQuality\", \"type\": \"Integer\" },\n        { \"object_id\": \"risk\", \"name\": \"operationalRisk\", \"type\": \"Integer\" },\n        { \"object_id\": \"state\", \"name\": \"status\", \"type\": \"Text\" },\n        { \"object_id\": \"source\", \"name\": \"source\", \"type\": \"Text\" }\n      ],\n      \"commands\": [\n        { \"name\": \"setTelemetry\", \"type\": \"command\" },\n        { \"name\": \"setMode\", \"type\": \"command\" }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{iotAgentUrl}}/iot/devices"
+          }
+        },
+        {
+          "name": "Criar ou atualizar entidade no Orion",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{entityId}}\",\n  \"type\": \"{{entityType}}\",\n  \"temperature\": { \"type\": \"Float\", \"value\": 24.0 },\n  \"pressure\": { \"type\": \"Float\", \"value\": 101.3 },\n  \"battery\": { \"type\": \"Integer\", \"value\": 90 },\n  \"vibration\": { \"type\": \"Float\", \"value\": 0.05 },\n  \"solarRisk\": { \"type\": \"Integer\", \"value\": 20 },\n  \"gpsQuality\": { \"type\": \"Integer\", \"value\": 95 },\n  \"operationalRisk\": { \"type\": \"Integer\", \"value\": 0 },\n  \"status\": { \"type\": \"Text\", \"value\": \"NORMAL\" },\n  \"source\": { \"type\": \"Text\", \"value\": \"LOCAL\" }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities?options=upsert"
+          }
+        },
+        {
+          "name": "Criar subscription Orion para STH-Comet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"SolarNav Guard Dragon telemetry history\",\n  \"subject\": {\n    \"entities\": [\n      { \"id\": \"{{entityId}}\", \"type\": \"{{entityType}}\" }\n    ],\n    \"condition\": {\n      \"attrs\": [\"temperature\", \"pressure\", \"battery\", \"vibration\", \"solarRisk\", \"gpsQuality\", \"operationalRisk\", \"status\", \"source\"]\n    }\n  },\n  \"notification\": {\n    \"http\": { \"url\": \"http://sth-comet:8666/notify\" },\n    \"attrs\": [\"temperature\", \"pressure\", \"battery\", \"vibration\", \"solarRisk\", \"gpsQuality\", \"operationalRisk\", \"status\", \"source\"],\n    \"attrsFormat\": \"legacy\"\n  },\n  \"throttling\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/subscriptions"
+          }
+        },
+        {
+          "name": "Consultar dispositivo provisionado",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "url": "{{iotAgentUrl}}/iot/devices/{{deviceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 - Comandos para o Wokwi",
+      "description": "Deixe a simulacao Wokwi em execucao. O Orion encaminha o comando ao IoT Agent, que publica em /TEF/dragon001/cmd.",
+      "item": [
+        {
+          "name": "Definir telemetria personalizada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando aceito pelo Orion', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setTelemetry\": {\n    \"type\": \"command\",\n    \"value\": {\n      \"temperature\": 28,\n      \"battery\": 72,\n      \"solarRisk\": 45\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}/attrs?type={{entityType}}",
+            "description": "Comando parcial: remova ou acrescente campos. Permitidos: temperature, pressure, battery, vibration, solarRisk e gpsQuality."
+          }
+        },
+        {
+          "name": "Preset NORMAL",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setTelemetry\": {\n    \"type\": \"command\",\n    \"value\": {\n      \"temperature\": 24,\n      \"pressure\": 101.3,\n      \"battery\": 90,\n      \"vibration\": 0.05,\n      \"solarRisk\": 20,\n      \"gpsQuality\": 95\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}/attrs?type={{entityType}}"
+          }
+        },
+        {
+          "name": "Preset ATENCAO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setTelemetry\": {\n    \"type\": \"command\",\n    \"value\": {\n      \"temperature\": 34,\n      \"pressure\": 107.3,\n      \"battery\": 25,\n      \"vibration\": 0.8,\n      \"solarRisk\": 65,\n      \"gpsQuality\": 55\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}/attrs?type={{entityType}}"
+          }
+        },
+        {
+          "name": "Preset CRITICO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setTelemetry\": {\n    \"type\": \"command\",\n    \"value\": {\n      \"temperature\": 38,\n      \"pressure\": 110,\n      \"battery\": 5,\n      \"vibration\": 1.5,\n      \"solarRisk\": 100,\n      \"gpsQuality\": 10\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}/attrs?type={{entityType}}"
+          }
+        },
+        {
+          "name": "Voltar ao modo LOCAL",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setMode\": {\n    \"type\": \"command\",\n    \"value\": \"LOCAL\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}/attrs?type={{entityType}}"
+          }
+        },
+        {
+          "name": "Teste de rejeicao atomica",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setTelemetry\": {\n    \"type\": \"command\",\n    \"value\": {\n      \"temperature\": 25,\n      \"battery\": 150\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}/attrs?type={{entityType}}",
+            "description": "O ESP32 deve rejeitar o comando inteiro e manter os valores anteriores porque battery=150 e invalido."
+          }
+        },
+        {
+          "name": "Consultar resultado do ultimo comando",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}?attrs=source,setTelemetry_status,setTelemetry_info,setMode_status,setMode_info,TimeInstant"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 - Consultas",
+      "item": [
+        {
+          "name": "Consultar entidade atual no Orion",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "url": "{{orionUrl}}/v2/entities/{{entityId}}"
+          }
+        },
+        {
+          "name": "Consultar historico no STH-Comet",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "url": "{{sthUrl}}/STH/v1/contextEntities/type/{{entityType}}/id/{{entityId}}/attributes/{{historyAttribute}}?lastN={{lastN}}"
+          }
+        },
+        {
+          "name": "Listar subscriptions do Orion",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "url": "{{orionUrl}}/v2/subscriptions?limit=1000"
+          }
+        },
+        {
+          "name": "Listar registrations de comandos",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "fiware-service", "value": "{{fiwareService}}" },
+              { "key": "fiware-servicepath", "value": "{{fiwareServicePath}}" }
+            ],
+            "url": "{{orionUrl}}/v2/registrations?limit=1000"
+          }
+        }
+      ]
+    }
+  ]
+}

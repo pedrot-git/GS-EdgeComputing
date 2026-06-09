@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "author": "SolarNav Guard",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 66, "left": 18, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -76, "left": 246, "attrs": { "temperature": "24", "humidity": "40" } },
+    { "type": "board-bmp180", "id": "bmp1", "top": 53, "left": 278, "attrs": { "temperature": "24", "pressure": "101300" } },
+    { "type": "wokwi-mpu6050", "id": "imu1", "top": 171, "left": 278, "attrs": { "accelX": "0", "accelY": "0", "accelZ": "1" } },
+    { "type": "wokwi-slide-potentiometer", "id": "battery", "top": 328, "left": -146, "attrs": { "value": "921", "travelLength": "60" } },
+    { "type": "wokwi-led", "id": "ledGreen", "top": 25, "left": 492, "attrs": { "color": "green", "label": "NORMAL" } },
+    { "type": "wokwi-led", "id": "ledYellow", "top": 73, "left": 492, "attrs": { "color": "yellow", "label": "ATENCAO" } },
+    { "type": "wokwi-led", "id": "ledRed", "top": 121, "left": 492, "attrs": { "color": "red", "label": "CRITICO" } },
+    { "type": "wokwi-buzzer", "id": "bz1", "top": 196, "left": 482, "attrs": { "volume": "0.1" } },
+    { "type": "wokwi-lcd1602", "id": "lcd1", "top": 302, "left": 310, "attrs": { "pins": "i2c" } }
+  ],
+  "connections": [
+    [ "esp:3V3", "dht1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "dht1:GND", "black", [ "h0" ] ],
+    [ "esp:D15", "dht1:SDA", "green", [ "h0" ] ],
+
+    [ "esp:3V3", "bmp1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "bmp1:GND", "black", [ "h0" ] ],
+    [ "esp:D21", "bmp1:SDA", "blue", [ "h0" ] ],
+    [ "esp:D22", "bmp1:SCL", "cyan", [ "h0" ] ],
+
+    [ "esp:3V3", "imu1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "imu1:GND", "black", [ "h0" ] ],
+    [ "esp:D21", "imu1:SDA", "blue", [ "h0" ] ],
+    [ "esp:D22", "imu1:SCL", "cyan", [ "h0" ] ],
+
+    [ "esp:3V3", "battery:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "battery:GND", "black", [ "h0" ] ],
+    [ "esp:D34", "battery:SIG", "green", [ "h0" ] ],
+
+    [ "esp:D18", "ledGreen:A", "green", [ "h0" ] ],
+    [ "esp:GND.1", "ledGreen:C", "black", [ "h0" ] ],
+    [ "esp:D19", "ledYellow:A", "gold", [ "h0" ] ],
+    [ "esp:GND.1", "ledYellow:C", "black", [ "h0" ] ],
+    [ "esp:D5", "ledRed:A", "red", [ "h0" ] ],
+    [ "esp:GND.1", "ledRed:C", "black", [ "h0" ] ],
+
+    [ "esp:D23", "bz1:1", "purple", [ "h0" ] ],
+    [ "esp:GND.1", "bz1:2", "black", [ "h0" ] ],
+
+    [ "esp:3V3", "lcd1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "lcd1:GND", "black", [ "h0" ] ],
+    [ "esp:D21", "lcd1:SDA", "blue", [ "h0" ] ],
+    [ "esp:D22", "lcd1:SCL", "cyan", [ "h0" ] ]
+  ],
+  "serialMonitor": {
+    "display": "always",
+    "newline": "lf"
+  },
+  "dependencies": {}
+}
