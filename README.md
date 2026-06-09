@@ -320,7 +320,7 @@ producao deve avaliar IoT Agent JSON, NGSI-LD, TLS e controle de acesso.
 
 - GitHub publico: https://github.com/pedrot-git/GS-EdgeComputing
 - Wokwi publico: https://wokwi.com/projects/466370349402539009
-- Video no YouTube: https://youtu.be/y4Co_naWWIw
+- Video no YouTube: https://youtu.be/Sl7dUCx1leA
 
 ## Referencias
 
