@@ -1,20 +1,6 @@
 # Arquitetura - SolarNav Guard Dragon Telemetry
 
-```mermaid
-flowchart TB
-  P[Postman] -->|setTelemetry / setMode| O[Orion]
-  D[Dashboard] -->|estado atual| O
-  D -->|historico| S[STH-Comet]
-  O --> S
-  O --> R[Processador de risco na VM]
-  R -->|operationalRisk / status| O
-  R -->|setRisk| O
-  O <--> I[IoT Agent UltraLight]
-  I <--> M[Mosquitto]
-  M <--> E[ESP32 no Wokwi]
-  E --> Sensores[DHT22 / BMP180 / MPU6050 / bateria]
-  E --> Atuadores[LEDs / buzzer / LCD]
-```
+![Arquitetura SolarNav Guard](images/arquitetura-solarnav.png?v=20260610-1)
 
 ## Responsabilidades
 

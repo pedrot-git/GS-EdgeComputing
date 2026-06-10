@@ -26,6 +26,8 @@ dashboard web.
 
 ## Arquitetura
 
+![Arquitetura SolarNav Guard](docs/images/arquitetura-solarnav.png?v=20260610-1)
+
 Mais detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
 ## Telemetria
