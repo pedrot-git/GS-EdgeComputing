@@ -51,7 +51,7 @@
     },
     {
       "name": "2 - Provisionamento",
-      "description": "Para reconciliacao idempotente, prefira fiware/provision-dragon.ps1. Estas requisicoes permitem inspecao e provisionamento manual.",
+      "description": "A instalacao automatica por scripts/install-vm.sh ja provisiona o projeto. Para reconciliacao idempotente, prefira fiware/provision-dragon.sh na VM ou fiware/provision-dragon.ps1 no Windows. Use estas requisicoes somente para inspecao ou provisionamento manual de uma instalacao ainda vazia.",
       "item": [
         {
           "name": "Criar service group MQTT",

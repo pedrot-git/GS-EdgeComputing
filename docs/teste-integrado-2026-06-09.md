@@ -1,5 +1,9 @@
 # Teste integrado - 9 de junho de 2026
 
+> Registro histórico da configuração validada em 9 de junho de 2026. O estado
+> atual possui três comandos e duas subscriptions. Consulte
+> `validacao-local-2026-06-10.md` para a validação local mais recente.
+
 ## Resultado automatizado
 
 - JSON do Wokwi e da colecao Postman validos.
